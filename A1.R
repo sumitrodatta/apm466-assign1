@@ -1,3 +1,4 @@
+install.packages("jrvfinance")
 library("jrvFinance")
 #import two separate sheets, neither of which is the full raw data of all bonds
 #this data only contains clean prices and only the 11 bonds selected (not all 32), used to calculate YTM
@@ -67,19 +68,6 @@ for (i in c(2:11))
 }
 View(RawSpots)
 
-####Forwards####
-
-#forward 1-yr, n-yr
-for (j in c(1:4))
-{
-  for (i in c(1:10))
-  {
-    one_yr=(1+FinalSpots[2,i]/2)^2
-    n_yr=(1+FinalSpots[2+2*j,i]/2)^(2+2*j)
-    Forwards[j,i]=2*((n_yr/one_yr)^(1/(2*j))-1)
-  }
-}
-
 ####Naming Columns + Rows####
 
 #rename columns for spots to Spots for [Date]"
@@ -109,6 +97,19 @@ for (i in c(1:10))
 }
 rownames(FinalYields)=rownames(FinalSpots)=seq(6,60,6)
 
+####Forwards####
+
+#forward 1-yr, n-yr= 1 yr forward from n-yr spot
+#for example, 1yr2yr is 1 yr forward starting at 2 yrs ->need spot for 2 and 3 yrs
+for (j in c(1:4))
+{
+  for (i in c(1:10))
+  {
+    n_yr=(1+FinalSpots[2*j,i]/2)^(2*j)
+    one_yr_fwd=(1+FinalSpots[2+2*j,i]/2)^(2+2*j)
+    Forwards[j,i]=2*((one_yr_fwd/n_yr)^(1/2)-1)
+  }
+}
 
 ####covariance matrices for log-return of yields####
 log_return_yields1=log_return_yields2=log_return_yields3=log_return_yields4=log_return_yields5=vector("numeric",9)
@@ -179,17 +180,17 @@ dev.off()
 
 ####Forwards Plot####
 pdf(file=paste(getwd(),"/Fwd_plot.pdf",sep=""),width=4.5,height=4)
-plot(seq(2021,2024),Forwards$`Forwards for 2020-01-02`,type="l",ylim=c(0.014,0.018), col="blue",
-     xlab="Years from 2020",ylab="Forward in Decimal (semi-ann compounded)", main ="All Forward Curves")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-03`,col="green")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-06`,col="red")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-07`,col="blueviolet")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-08`,col="violet")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-09`,col="yellowgreen")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-10`,col="sienna")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-13`,col="powderblue")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-14`,col="gold")
-lines(seq(2021,2024),Forwards$`Forwards for 2020-01-15`,col="orange")
+plot(seq(1,4),Forwards$`Forwards for 2020-01-02`,type="l",ylim=c(0.013,0.022), col="blue",
+     xlab="Years from 2020",ylab="Forward in Decimal (semi-ann compounded)", main ="All 1-Yr, N-Yr Forward Curves")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-03`,col="green")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-06`,col="red")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-07`,col="blueviolet")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-08`,col="violet")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-09`,col="yellowgreen")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-10`,col="sienna")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-13`,col="powderblue")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-14`,col="gold")
+lines(seq(1,4),Forwards$`Forwards for 2020-01-15`,col="orange")
 legend("topleft",Dates,lty=c(1,1), lwd=c(2,2),cex=.5, bty = "n", 
        col=c("blue","green","red","blueviolet","violet","yellowgreen","sienna","powderblue","gold","orange"))
 dev.off()
