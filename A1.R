@@ -18,6 +18,7 @@ Forwards = data.frame(v,v,v,v,v,v,v,v,v,v)
 
 Dates = c("2020-01-02","2020-01-03","2020-01-06","2020-01-07","2020-01-08","2020-01-09","2020-01-10","2020-01-13",
           "2020-01-14","2020-01-15")
+####YTM####
 
 #yields to maturity using jrvfinance
 for (i in c(1:11)) 
@@ -30,6 +31,8 @@ for (i in c(1:11))
   }
 }
 View(RawYields)
+
+####Spots####
 
 #calculate the semi-ann spot rate within the first six months:
 #2*[(price/(0.5*coupon + face)^(-1/2*TTM))-1]
@@ -64,6 +67,21 @@ for (i in c(2:11))
 }
 View(RawSpots)
 
+####Forwards####
+
+#forward 1-yr, n-yr
+for (j in c(1:4))
+{
+  for (i in c(1:10))
+  {
+    one_yr=(1+FinalSpots[2,i]/2)^2
+    n_yr=(1+FinalSpots[2+2*j,i]/2)^(2+2*j)
+    Forwards[j,i]=2*((n_yr/one_yr)^(1/(2*j))-1)
+  }
+}
+
+####Naming Columns + Rows####
+
 #rename columns for spots to Spots for [Date]"
 #rename columns for spots to Yields for [Date]"
 #rename columns for forwards to Forwards for [Date]"
@@ -78,6 +96,8 @@ names(RawYields)=names(FinalYields)=yieldscolumnnames
 names(Forwards)=fwdscolumnnames
 bondsDirty=data.frame(bondsDirty,RawSpots)
 
+####Interpolation for yields and spots####
+
 #interpolate for n-month yield and n-month spot, where n is multiples of 6 up to 60
 for (i in c(1:10))
 {
@@ -89,18 +109,40 @@ for (i in c(1:10))
 }
 rownames(FinalYields)=rownames(FinalSpots)=seq(6,60,6)
 
-#forward 1-yr, n-yr
-for (j in c(1:4))
+
+####covariance matrices for log-return of yields####
+log_return_yields1=log_return_yields2=log_return_yields3=log_return_yields4=log_return_yields5=vector("numeric",9)
+
+for (i in c(1:9))
 {
-  for (i in c(1:10))
-  {
-    one_yr=(1+FinalSpots[2,i]/2)^2
-    n_yr=(1+FinalSpots[2+2*j,i]/2)^(2+2*j)
-    Forwards[j,i]=2*((n_yr/one_yr)^(1/(2*j))-1)
-  }
+  log_return_yields1[i]=log(FinalYields[2,i]/FinalYields[2,i+1])
+  log_return_yields2[i]=log(FinalYields[4,i]/FinalYields[4,i+1])
+  log_return_yields3[i]=log(FinalYields[6,i]/FinalYields[4,i+1])
+  log_return_yields4[i]=log(FinalYields[8,i]/FinalYields[8,i+1])
+  log_return_yields5[i]=log(FinalYields[10,i]/FinalYields[10,i+1])
 }
 
-#Yield Plot
+log_returns_yields=data.frame(log_return_yields1,log_return_yields2,log_return_yields3,log_return_yields4,log_return_yields5)
+covariance_of_log_returns=cov(log_returns_yields,log_returns_yields)
+
+####covariance matrices for fwd rates
+fwdrates12=fwdrates13=fwdrates14=fwdrates15=vector("numeric",9)
+for(i in c(1:9))
+{
+  fwdrates12[i]=log(Forwards[1,i]/Forwards[1,i+1])
+  fwdrates13[i]=log(Forwards[2,i]/Forwards[2,i+1])
+  fwdrates14[i]=log(Forwards[3,i]/Forwards[3,i+1])
+  fwdrates15[i]=log(Forwards[4,i]/Forwards[4,i+1])
+}
+
+fwdrates=data.frame(fwdrates12,fwdrates13,fwdrates14,fwdrates15)
+covariance_of_fwdrates=cov(fwdrates,fwdrates)
+
+####eigenitems of the above covariance matrices####
+eigenitems_yield=eigen(covariance_of_log_returns,symmetric=TRUE)
+eigenitems_fwd=eigen(covariance_of_fwdrates,symmetric=TRUE)
+
+####Yield Plot####
 
 pdf(file=paste(getwd(),"/YTM_plot.pdf",sep=""),width=4,height=3.5)
 plot(seq(6,60,6),FinalYields$`Yields for 2020-01-02`,type="l",ylim=c(0.015,0.022), col="blue",
@@ -118,7 +160,7 @@ legend("topright",Dates,lty=c(1,1), lwd=c(2,2),cex=.5, bty = "n",
        col=c("blue","green","red","blueviolet","violet","yellowgreen","sienna","powderblue","gold","orange"))
 dev.off()
 
-#Spot Plot
+####Spot Plot####
 pdf(file=paste(getwd(),"/Spot_plot.pdf",sep=""),width=4.5,height=4)
 plot(seq(6,60,6),FinalSpots$`Spots for 2020-01-02`,type="l", ylim=c(0.013,0.025), col="blue",
      xlab="Months from January 2020",ylab="Spot in Decimal (semi-ann compounded)", main ="All Spot Curves")
@@ -135,7 +177,7 @@ legend("topright",Dates,lty=c(1,1), lwd=c(2,2),cex=.5, bty = "n",
        col=c("blue","green","red","blueviolet","violet","yellowgreen","sienna","powderblue","gold","orange"))
 dev.off()
 
-#Forwards Plot
+####Forwards Plot####
 pdf(file=paste(getwd(),"/Fwd_plot.pdf",sep=""),width=4.5,height=4)
 plot(seq(2021,2024),Forwards$`Forwards for 2020-01-02`,type="l",ylim=c(0.014,0.018), col="blue",
      xlab="Years from 2020",ylab="Forward in Decimal (semi-ann compounded)", main ="All Forward Curves")
